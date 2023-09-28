@@ -51,7 +51,7 @@
 - luci-theme-material
 - luci-theme-netgear
 
-下载： [Releases](https://github.com/c3p7f2/build-openwrt/releases)
+下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases)
 
 | 默认 IP     | 默认账号 | 默认密码 |
 | ----------- | -------- | -------- |
