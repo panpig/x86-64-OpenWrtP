@@ -516,6 +516,12 @@ jobs:
 
             下载地址：https://github.com/${{ github.repository }}/releases/tag/${{ env.release_tag }}
 
+      - name: Delete workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          retain_days: 5
+          keep_minimum_runs: 5
+
       - name: Delete Older Releases
         uses: dev-drprasad/delete-older-releases@v0.2.1
         with:
