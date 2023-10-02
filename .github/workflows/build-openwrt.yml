@@ -31,6 +31,8 @@ env:
   SOURCE: lede
   TZ: Asia/Shanghai
   APP_CONFIG: configs/app.config
+  WEB_BRANCH: web
+  WEB_PATH: ${{ github.workspace }}/web
 
 jobs:
   generate-matrix:
@@ -259,24 +261,10 @@ jobs:
 
       - name: ssh to action
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh_quick  && contains(matrix.Device, 'x86')}}
+        env:
+          CLOUDFLARED_TOKEN: ${{ secrets.CLOUDFLARED_TOKEN }}
         run: |
-          sudo snap install ttyd --classic
-          # ttyd -p 8000 bash &
-
-          curl -fsSLO https://starship.rs/install.sh  && sh ./install.sh --yes
-          rm ./install.sh
-          echo 'eval "$(starship init bash)"' >> /home/runner/.bashrc        
-          echo 'eval "$(starship init bash)"' | sudo tee /root/.bashrc   
-          mkdir -p /home/runner/.ssh
-          sudo mkdir -p /root/.ssh
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7a9wzWBmnjDtO39GZ0Z1wEGMkR1YRxeZkVNvPQ8GkZKHYdtCrqX+SdRBczo2xdJbHM9cDJNtOJKZp1/n4MCuMVMD8ea93npMjIXpt+lP7cGvyEYAhRrzKEiy3+jAVxnK9wDRpAGAI6uL5mLk9TAO3bt42Tzf02GGjgHqPshiVsBee2Y+rNqPWOb1a0gp302DlORo5stW4zLmRgvwEaxbcEr02lct4ly1s0fjjTJIxXHfOcs+tviW77IcXh1BeE+OvKLAHvfCalMnmm8q1WxDHk4feqCt/pq5pMWnvqg+PQlOLFT1Ff7T4Hi22shmy0Jbuor3HksxrdIcpl6hNAzeH" >> /home/runner/.ssh/authorized_keys
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7a9wzWBmnjDtO39GZ0Z1wEGMkR1YRxeZkVNvPQ8GkZKHYdtCrqX+SdRBczo2xdJbHM9cDJNtOJKZp1/n4MCuMVMD8ea93npMjIXpt+lP7cGvyEYAhRrzKEiy3+jAVxnK9wDRpAGAI6uL5mLk9TAO3bt42Tzf02GGjgHqPshiVsBee2Y+rNqPWOb1a0gp302DlORo5stW4zLmRgvwEaxbcEr02lct4ly1s0fjjTJIxXHfOcs+tviW77IcXh1BeE+OvKLAHvfCalMnmm8q1WxDHk4feqCt/pq5pMWnvqg+PQlOLFT1Ff7T4Hi22shmy0Jbuor3HksxrdIcpl6hNAzeH" | sudo tee /root/.ssh/authorized_keys
-
-          # 2
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCpN4ZLZCLDnINMNIwRRkHgy90LtGTRbk/EEGk5q7skStUkTFAtm1IarT12qicZJozfDVciM9BpuYchH+bSVAdKCAo+kv1Z7xVqxpjmPwGRGXju3p5vucOIF2F8B58h6ddsyEzvcqiN4du+VBZsWJR+ZO6XCrZO0ejO+5aBloUfqCOSd/f3pp6PQ1Hw55pXvwMIDkj8kiDJcDa9NvbLrjgwJ2DEqihOC4MkCyr+CfZd5Tz5URmNf0aXUKWQJcQPDltngXa94MihE6PJCA/ftBkBVXtQBIa1fcO+Tx56Nsvlpu7GS7RgQ5EkkeVNmQ2VR50ZPme0G+SFrfsqElez2KyCuXCD/AcQl7rBmP5d6K9Z8aGnom8hVrJY7Mk3NYuPgkVRWfDm2uEEy5DpowfMwsdrrL4D6ml1nDvrIjXdcWqd21E4/aJGRmPcDWXb9cQy2J4LdYuaupjzLzPAv1x/wL7lUXtzjeoMNeIY9pZhAYMULZ0G58l4DqlC0fN3zqzAQA8=" >> /home/runner/.ssh/authorized_keys
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCpN4ZLZCLDnINMNIwRRkHgy90LtGTRbk/EEGk5q7skStUkTFAtm1IarT12qicZJozfDVciM9BpuYchH+bSVAdKCAo+kv1Z7xVqxpjmPwGRGXju3p5vucOIF2F8B58h6ddsyEzvcqiN4du+VBZsWJR+ZO6XCrZO0ejO+5aBloUfqCOSd/f3pp6PQ1Hw55pXvwMIDkj8kiDJcDa9NvbLrjgwJ2DEqihOC4MkCyr+CfZd5Tz5URmNf0aXUKWQJcQPDltngXa94MihE6PJCA/ftBkBVXtQBIa1fcO+Tx56Nsvlpu7GS7RgQ5EkkeVNmQ2VR50ZPme0G+SFrfsqElez2KyCuXCD/AcQl7rBmP5d6K9Z8aGnom8hVrJY7Mk3NYuPgkVRWfDm2uEEy5DpowfMwsdrrL4D6ml1nDvrIjXdcWqd21E4/aJGRmPcDWXb9cQy2J4LdYuaupjzLzPAv1x/wL7lUXtzjeoMNeIY9pZhAYMULZ0G58l4DqlC0fN3zqzAQA8=" | sudo tee /root/.ssh/authorized_keys
-
-          docker run  --net=host cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${{ secrets.CLOUDFLARED_TOKEN }}
+          /bin/bash $GITHUB_WORKSPACE/scripts/ssh.sh
 
       - name: Initialization environment
         env:
@@ -373,41 +361,28 @@ jobs:
           cd $OPENWRT_PATH
           make download -j8
 
-      - name: 固件：文件替换和配置重写
+      - name: 定制
         run: |
           cd $OPENWRT_PATH
 
-          /bin/bash $GITHUB_WORKSPACE/scripts/openwrt/rewrite.sh
+          if [[ ${{ matrix.Device }} == *"x86"* ]]; then
+            arch="amd64"
+          else
+            arch="arm64"
+          fi
+                  
+          /bin/bash $GITHUB_WORKSPACE/scripts/openwrt/vektor-exec.sh $arch
 
           if [ -n "$(ls -A "$GITHUB_WORKSPACE/files" 2>/dev/null)" ]; then
            cp -Rf $GITHUB_WORKSPACE/files/* ./
           fi
 
-      - name: 编译前执行脚本以修改一些内容
-        run: |
-          cd $OPENWRT_PATH
-          /bin/bash $GITHUB_WORKSPACE/scripts/openwrt/vektor-exec.sh
-
       - name: ssh to action
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh  && contains(matrix.Device, 'x86')}}
+        env:
+          CLOUDFLARED_TOKEN: ${{ secrets.CLOUDFLARED_TOKEN }}
         run: |
-          sudo snap install ttyd --classic
-          # ttyd -p 8000 bash &
-
-          curl -fsSLO https://starship.rs/install.sh  && sh ./install.sh --yes
-          rm ./install.sh
-          echo 'eval "$(starship init bash)"' >> /home/runner/.bashrc        
-          echo 'eval "$(starship init bash)"' | sudo tee /root/.bashrc   
-          mkdir -p /home/runner/.ssh
-          sudo mkdir -p /root/.ssh
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7a9wzWBmnjDtO39GZ0Z1wEGMkR1YRxeZkVNvPQ8GkZKHYdtCrqX+SdRBczo2xdJbHM9cDJNtOJKZp1/n4MCuMVMD8ea93npMjIXpt+lP7cGvyEYAhRrzKEiy3+jAVxnK9wDRpAGAI6uL5mLk9TAO3bt42Tzf02GGjgHqPshiVsBee2Y+rNqPWOb1a0gp302DlORo5stW4zLmRgvwEaxbcEr02lct4ly1s0fjjTJIxXHfOcs+tviW77IcXh1BeE+OvKLAHvfCalMnmm8q1WxDHk4feqCt/pq5pMWnvqg+PQlOLFT1Ff7T4Hi22shmy0Jbuor3HksxrdIcpl6hNAzeH" >> /home/runner/.ssh/authorized_keys
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC7a9wzWBmnjDtO39GZ0Z1wEGMkR1YRxeZkVNvPQ8GkZKHYdtCrqX+SdRBczo2xdJbHM9cDJNtOJKZp1/n4MCuMVMD8ea93npMjIXpt+lP7cGvyEYAhRrzKEiy3+jAVxnK9wDRpAGAI6uL5mLk9TAO3bt42Tzf02GGjgHqPshiVsBee2Y+rNqPWOb1a0gp302DlORo5stW4zLmRgvwEaxbcEr02lct4ly1s0fjjTJIxXHfOcs+tviW77IcXh1BeE+OvKLAHvfCalMnmm8q1WxDHk4feqCt/pq5pMWnvqg+PQlOLFT1Ff7T4Hi22shmy0Jbuor3HksxrdIcpl6hNAzeH" | sudo tee /root/.ssh/authorized_keys
-
-          # 2
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCpN4ZLZCLDnINMNIwRRkHgy90LtGTRbk/EEGk5q7skStUkTFAtm1IarT12qicZJozfDVciM9BpuYchH+bSVAdKCAo+kv1Z7xVqxpjmPwGRGXju3p5vucOIF2F8B58h6ddsyEzvcqiN4du+VBZsWJR+ZO6XCrZO0ejO+5aBloUfqCOSd/f3pp6PQ1Hw55pXvwMIDkj8kiDJcDa9NvbLrjgwJ2DEqihOC4MkCyr+CfZd5Tz5URmNf0aXUKWQJcQPDltngXa94MihE6PJCA/ftBkBVXtQBIa1fcO+Tx56Nsvlpu7GS7RgQ5EkkeVNmQ2VR50ZPme0G+SFrfsqElez2KyCuXCD/AcQl7rBmP5d6K9Z8aGnom8hVrJY7Mk3NYuPgkVRWfDm2uEEy5DpowfMwsdrrL4D6ml1nDvrIjXdcWqd21E4/aJGRmPcDWXb9cQy2J4LdYuaupjzLzPAv1x/wL7lUXtzjeoMNeIY9pZhAYMULZ0G58l4DqlC0fN3zqzAQA8=" >> /home/runner/.ssh/authorized_keys
-          echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCpN4ZLZCLDnINMNIwRRkHgy90LtGTRbk/EEGk5q7skStUkTFAtm1IarT12qicZJozfDVciM9BpuYchH+bSVAdKCAo+kv1Z7xVqxpjmPwGRGXju3p5vucOIF2F8B58h6ddsyEzvcqiN4du+VBZsWJR+ZO6XCrZO0ejO+5aBloUfqCOSd/f3pp6PQ1Hw55pXvwMIDkj8kiDJcDa9NvbLrjgwJ2DEqihOC4MkCyr+CfZd5Tz5URmNf0aXUKWQJcQPDltngXa94MihE6PJCA/ftBkBVXtQBIa1fcO+Tx56Nsvlpu7GS7RgQ5EkkeVNmQ2VR50ZPme0G+SFrfsqElez2KyCuXCD/AcQl7rBmP5d6K9Z8aGnom8hVrJY7Mk3NYuPgkVRWfDm2uEEy5DpowfMwsdrrL4D6ml1nDvrIjXdcWqd21E4/aJGRmPcDWXb9cQy2J4LdYuaupjzLzPAv1x/wL7lUXtzjeoMNeIY9pZhAYMULZ0G58l4DqlC0fN3zqzAQA8=" | sudo tee /root/.ssh/authorized_keys
-
-          docker run  --net=host cloudflare/cloudflared:latest tunnel --no-autoupdate run --token ${{ secrets.CLOUDFLARED_TOKEN }}
+          /bin/bash $GITHUB_WORKSPACE/scripts/ssh.sh
 
       - name: 编译Packages
         id: compile
@@ -469,6 +444,8 @@ jobs:
           echo "DEVICES=$(echo '${{ needs.generate-matrix.outputs.matrix }}' | jq -r '.include[].device' | tr '\n' ' ')" >> $GITHUB_ENV
           echo "WORKFLOW=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
 
+          echo "BIN_PATH=openwrt/${{ matrix.Device }}/${{ env.CURRENT_BRANCH }}" >> $GITHUB_ENV
+
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v1
         env:
@@ -488,6 +465,26 @@ jobs:
             **_Redstone | Powered by ${{ env.SOURCE_URL }} ${{ env.SOURCE_BRANCH }} branch_**
           files: ${{ env.PACKAGED_OUTPUTPATH }}/*
 
+      #- name: Checkout code
+      #  uses: actions/checkout@v2
+      #  with:
+      #    ref: ${{ env.WEB_BRANCH }}
+      #    path: ${{ env.WEB_PATH }}
+      #    lfs: true
+#
+      #- name: Commit and push if changed
+      #  run: |
+      #    cd ${{ env.WEB_PATH }}
+#
+      #    mkdir -p ${{env.BIN_PATH}}
+      #    mv ${{ env.PACKAGED_OUTPUTPATH }}/* ${{env.BIN_PATH}}/
+#
+      #    git config --global user.email "actions@github.com"
+      #    git config --global user.name "GitHub Actions"
+      #    git lfs track "${{env.BIN_PATH}}/*.gz"
+      #    git add -A
+      #    git diff --quiet && git diff --staged --quiet || (git commit -m "Add changes" ; git push)
+
       - name: TG Notification - ❌
         if: ${{ !success() }}
         continue-on-error: true
@@ -496,10 +493,24 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            编译失败 ❌
+            ERR!!
+              正在运行工作流但是遇到了错误
+              请查看具体日志(${{ env.WORKFLOW }})以探明发生错误的位置及原因
 
-            设备/平台：${{ matrix.Device }}
-            分支：${{ env.CURRENT_BRANCH }}
+            INFO
+              设备/平台：${{ matrix.Device }}
+              分支：${{ env.CURRENT_BRANCH }}
+              
+            What can I do
+              如果你具有仓库的管理权请检查报错的代码并修正
+              如果你对仓库没有权限请提交Issues(${{ github.server_url }}/${{ github.repository }}/issues/new)
+
+            ---END---
+
+            REDSTONE
+            An OpenWrt firmware that focuses on stability, beauty, and a modern experience.
+            一个OpenWrt固件，注重稳定、美观、现代化体验。
+            ${{ github.server_url }}/${{ github.repository }}
 
       - name: TG Notification - ✔️
         if: ${{ success() }}
@@ -509,18 +520,22 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            编译成功 ✔️
+            Succeed
+              ${{ matrix.Device }} 固件已制作完毕
+              下载地址：https://github.com/${{ github.repository }}/releases/tag/${{ env.release_tag }}
 
-            设备/平台：${{ matrix.Device }}
-            分支：${{ env.CURRENT_BRANCH }}
+            ---END---
 
-            下载地址：https://github.com/${{ github.repository }}/releases/tag/${{ env.release_tag }}
+            REDSTONE
+            An OpenWrt firmware that focuses on stability, beauty, and a modern experience.
+            一个OpenWrt固件，注重稳定、美观、现代化体验。
+            ${{ github.server_url }}/${{ github.repository }}
 
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@v2
+      - uses: otto-de/purge-deprecated-workflow-runs@v2
         with:
-          retain_days: 5
-          keep_minimum_runs: 5
+          remove-failed: true
+          remove-cancelled: true
+          remove-skipped: true
 
       - name: Delete Older Releases
         uses: dev-drprasad/delete-older-releases@v0.2.1

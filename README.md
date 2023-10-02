@@ -51,11 +51,15 @@
 - luci-theme-material
 - luci-theme-netgear
 
-下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases)
+下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases) / [官方网站](https://redstone.cn-net.one/)
 
 | 默认 IP     | 默认账号 | 默认密码 |
 | ----------- | -------- | -------- |
 | 192.168.1.1 | root     | password |
+
+## 预览：
+<img src="./img/preview-lede.png"/>
+
 
 ## 鸣谢：
 
