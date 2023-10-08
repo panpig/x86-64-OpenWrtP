@@ -122,6 +122,49 @@
 <%+header%>
 
 <script type="text/javascript" src="<%=resource%>/cbi.js?v=git-19.167.54478-71e2af4"></script>
+<script type="text/javascript">
+
+const rawGithubURL =
+  "https://raw.githubusercontent.com/c3p7f2/pages/main/openwrt/update-checker.js";
+
+var urls = [
+  "https://ghproxy.com/" + rawGithubURL,
+  rawGithubURL,
+  "https://cdn.jsdelivr.net/gh/c3p7f2/pages@main/openwrt/update-checker.js",
+  "https://fastly.jsdelivr.net/gh/c3p7f2/pages@main/openwrt/update-checker.js",
+
+  "https://ghps.cc/" + rawGithubURL,
+  "https://gh.cn-net.one/" + rawGithubURL,
+];
+
+function requestScript(urls) {
+  var xhr = new XMLHttpRequest();
+  var currentIndex = 0;
+
+  function makeRequest() {
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          eval(xhr.responseText);
+        } else {
+          currentIndex++;
+          if (currentIndex < urls.length) {
+            makeRequest();
+          } 
+        }
+      }
+    };
+
+    xhr.open("GET", urls[currentIndex], true);
+    xhr.send();
+  }
+
+  makeRequest();
+}
+
+requestScript(urls);
+
+</script>
 <script type="text/javascript">//<![CDATA[
 	function progressbar(v, m)
 	{
