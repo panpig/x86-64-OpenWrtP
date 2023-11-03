@@ -58,8 +58,8 @@
 | 192.168.1.1 | root     | password |
 
 ## 预览：
-<img src="./img/preview-lede.png"/>
 
+<img src="./img/preview-lede.png"/>
 
 ## 鸣谢：
 
