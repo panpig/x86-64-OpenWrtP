@@ -51,7 +51,7 @@
 - luci-theme-material
 - luci-theme-netgear
 
-下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases) / [官方网站](https://redstone.cn-net.one/)
+下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases)
 
 | 默认 IP     | 默认账号 | 默认密码 |
 | ----------- | -------- | -------- |
@@ -86,9 +86,6 @@
 
 <div align="right" style=" margin-top:20px">
 
-  <img src="./img/moeorange-dark.svg#gh-light-mode-only" width=auto height="35">
+<a href="https://badges.toozhao.com/stats/01H9AS9VDKAKXEWV8N076FSJ2Z" target="_blank"><img src="https://badges.toozhao.com/badges/01H9AS9VDKAKXEWV8N076FSJ2Z/green.svg"></a>
 
-   <img src="./img/moeorange.svg#gh-dark-mode-only" width=auto height="35">
-   
-   <a href="https://badges.toozhao.com/stats/01H9AS9VDKAKXEWV8N076FSJ2Z" target="_blank"><img src="https://badges.toozhao.com/badges/01H9AS9VDKAKXEWV8N076FSJ2Z/green.svg"></a>
 </div>
