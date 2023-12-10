@@ -1,6 +1,25 @@
-# x86-64-OpenWrt
+<div align="center">
 
-本固件适配 x86-64 设备的主路由和旁路由模式，追求稳定、轻量且美观，有着完整的 IPv6 支持，编译并安装了下列 luci-app：
+<img src="./img/redstone-bk.png" width="300"/>
+
+</div >
+
+# Redstone | OpenWrt firmware
+
+项目使用 Github Actions 拉取源码仓库进行云编译 OpenWrt
+
+## OpenWrt 固件下载
+
+下载： [Releases](https://github.com/c3p7f2/build-openwrt/releases)
+
+| 默认 IP     | 默认账号 | 默认密码 |
+| ----------- | -------- | -------- |
+| 192.168.1.1 | root     | password |
+
+### 分支
+
+<details><summary><b>coolsnowwolf/lede：插件列表及页面预览</b> （点击展开/收起）</summary>
+<img src="./img/preview-lede.png"/>
 
 - luci-app-accesscontrol
 - luci-app-adguardhome
@@ -51,15 +70,43 @@
 - luci-theme-material
 - luci-theme-netgear
 
-下载： [Releases](https://github.com/moemoe-orange/x86-64-OpenWrt/releases)
+</details>
 
-| 默认 IP     | 默认账号 | 默认密码 |
-| ----------- | -------- | -------- |
-| 192.168.1.1 | root     | password |
+<details><summary><b>openwrt/openwrt/tree/openwrt-23.05：插件列表及页面预览</b> （点击展开/收起）</summary>
 
-## 预览：
+<img src="./img/preview-official.png"/>
 
-<img src="./img/preview-lede.png"/>
+- luci-app-OpenClash
+
+</details>
+
+## 设备
+
+- X86-64
+- 斐讯 N1
+- Rockchip (Orange-Pi-R1-Plus,Nanopi-R4s,Nanopi-R2s)
+- Raspberry Pi (4,3,3b+)
+- 虚拟机 (vmdk)
+- [Docker 镜像](https://hub.docker.com/r/shashiikora/openwrt-redstone)
+
+## DIY&Contribute
+
+DIY：Fork 项目自己修改配置产出固件，只是完成编译无需添加 GitHub 变量，只需要修改你想更改的内容即可，以下是项目的目录结构。  
+Contribute：可以为固件添加好用的 Luci App，修改工作流等等。
+
+```
+.github\workflows\build-openwrt.yml 编译流程（Action工作流）
+                 |docker-image.yml  提交Docker镜像
+configs\*\.config                   相应设备配置
+       |app.config                  插件配置
+scripts\openwrt\add-package.sh      添加软件包
+               |init-settings.sh    修改固件信息
+               |rewrite.sh          修改固件信息
+               |vektor-exec.sh      编译前最后执行的脚本
+       |ssh.sh                      SSH连接
+files\*                             替换文件（源码内）
+Dockerfile                          制作Docker镜像
+```
 
 ## 鸣谢：
 
