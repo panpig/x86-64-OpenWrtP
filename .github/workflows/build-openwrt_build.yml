@@ -1,227 +1,124 @@
-name: Build
+name: Build OpenWrt => Build
 
 on:
-  # push:
-  #   paths:
-  #     - "configs/**"
-  #     - ".github/workflows/build-openwrt.yml"
-  #     - "scripts/openwrt/**"
-  #   branches-ignore:
-  #     - stable
-  schedule:
-    - cron: "0 19 * * *"
-  workflow_dispatch:
-    inputs:
-      ssh:
-        description: "SSH"
-        required: false
-        default: ""
-      ssh_quick:
-        description: "Quick SSH"
-        required: false
-        default: ""
-
   repository_dispatch:
-    types: [trigger-build]
+    types: [trigger-build-openwrt_build]
 
 env:
-  SOURCE_URL: https://github.com/coolsnowwolf/lede
-  SOURCE_BRANCH: master
-  TOOLCHAIN_TAG: Toolchain
-  SOURCE: lede
   TZ: Asia/Shanghai
-  APP_CONFIG: configs/app.config
-  WEB_BRANCH: web
-  WEB_PATH: ${{ github.workspace }}/web
 
 jobs:
-  generate-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - id: set-matrix
-        run: |
-          # Change directory to configs
-          cd configs
-          # Initialize the matrix variable
-          matrix="{\"include\":["
-
-          # Loop through each folder in the configs directory
-          for d in */ ; do
-              # Remove the trailing slash from the folder name
-              device_name=${d%/}
-              # Append the device name to the matrix variable
-              matrix="$matrix{\"device\":\"$device_name\"},"
-          done
-
-          # Remove the trailing comma from the matrix variable
-          matrix=${matrix%,}
-          # Close the matrix variable
-          matrix="$matrix]}"
-          # Change back to the previous directory
-          cd ..
-          # Set the matrix output
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
-          echo $matrix
-
-  Toolchain:
-    needs: generate-matrix
-
-    strategy:
-      fail-fast: false
-      matrix: ${{fromJson(needs.generate-matrix.outputs.matrix)}}
-    runs-on: ubuntu-latest
-
-    outputs:
-      OPENWRT_PATH: ${{ steps.clone.outputs.OPENWRT_PATH }}
-      VERSION_INFO: ${{ steps.clone.outputs.VERSION_INFO }}
-      CURRENT_BRANCH: ${{ steps.env.outputs.CURRENT_BRANCH }}
-      SOURCE_REPO: ${{ steps.env.outputs.SOURCE_REPO }}
-      DEVICE_TARGET: ${{ steps.env.outputs.DEVICE_TARGET }}
-      DEVICE_SUBTARGET: ${{ steps.env.outputs.DEVICE_SUBTARGET }}
-      TOOLCHAIN_IMAGE: ${{ steps.env.outputs.TOOLCHAIN_IMAGE }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: 初始化环境
-        env:
-          DEBIAN_FRONTEND: noninteractive
-        run: |
-          sudo rm -rf /etc/apt/sources.list.d/*
-          sudo -E apt-get -qq update
-          sudo -E apt-get -qq install $(curl -fsSL is.gd/depends_ubuntu_2204)
-          sudo -E apt-get -qq install aria2 clang clangd ecj lib32gcc-s1 libfuse-dev libncursesw5 \
-                                  libpython3-dev lld lldb python3-ply re2c
-          sudo -E apt-get -qq autoremove --purge
-          sudo -E apt-get -qq clean
-          sudo timedatectl set-timezone "$TZ"
-
-      - name: 克隆源码
-        id: clone
-        run: |
-          df -hT $GITHUB_WORKSPACE
-          git clone $SOURCE_URL -b $SOURCE_BRANCH openwrt
-          cd openwrt
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "OPENWRT_PATH=$(echo $PWD)" >> $GITHUB_OUTPUT
-          export VERSION_INFO=$(git show -s --date=short --format="Author: %an<br/>date: %cd<br/>commit: %s<br/>commit hash: %H")
-          echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
-          echo "VERSION_INFO=$(echo $VERSION_INFO)" >> $GITHUB_OUTPUT
-
-      - name: 生成Toolchain配置
-        run: |
-
-          mv configs/${{ matrix.Device }}/.config $OPENWRT_PATH/.config
-          cat $GITHUB_WORKSPACE/$APP_CONFIG >> $OPENWRT_PATH/.config
-          cd $OPENWRT_PATH && make defconfig
-          sed -i '/CONFIG_DEFAULT_luci/'d .config
-
-          echo -e "\nCONFIG_ALL=y" >> $OPENWRT_PATH/.config
-          echo -e "\nCONFIG_ALL_NONSHARED=y" >> $OPENWRT_PATH/.config
-          cd $OPENWRT_PATH
-          make defconfig > /dev/null 2>&1
-
-      - name: 生成变量
-        id: env
-        run: |
-          export CURRENT_BRANCH="$(git symbolic-ref --short HEAD)"
-          echo "CURRENT_BRANCH=$CURRENT_BRANCH" >> $GITHUB_ENV
-          echo "CURRENT_BRANCH=$(echo $CURRENT_BRANCH)" >> $GITHUB_OUTPUT
-          cd $OPENWRT_PATH
-          export SOURCE_REPO="$(echo $SOURCE_URL | awk -F '/' '{print $(NF)}')"
-          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-          echo "SOURCE_REPO=$(echo $SOURCE_REPO)" >> $GITHUB_OUTPUT
-          export DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          echo "DEVICE_TARGET=$(echo $DEVICE_TARGET)" >> $GITHUB_OUTPUT
-          export DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$(echo $DEVICE_SUBTARGET)" >> $GITHUB_OUTPUT
-          export TOOLCHAIN_IMAGE="toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ matrix.Device }}"
-          echo "TOOLCHAIN_IMAGE=$TOOLCHAIN_IMAGE" >> $GITHUB_ENV
-          echo "TOOLCHAIN_IMAGE=$(echo $TOOLCHAIN_IMAGE)" >> $GITHUB_OUTPUT
-
-      - name: 比较Toolchain Hash
-        id: hash
-        run: |
-          cd $OPENWRT_PATH
-          export CURRENT_HASH=$(git log --pretty=tformat:"%H" -n1 tools toolchain)
-          echo "CURRENT_HASH=$CURRENT_HASH" >> $GITHUB_ENV
-          echo "CURRENT_HASH is $CURRENT_HASH"
-          export CACHE_HASH=$(curl -fSsL -k https://github.com/$GITHUB_REPOSITORY/releases/download/$TOOLCHAIN_TAG/$TOOLCHAIN_IMAGE.hash)
-          echo "CACHE_HASH is $CACHE_HASH"
-          if [ -z "$CACHE_HASH" ] || [ "$CURRENT_HASH" != "$CACHE_HASH" ]; then
-            echo "REBUILD_TOOLCHAIN=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 安装Feeds
-        if: steps.hash.outputs.REBUILD_TOOLCHAIN == 'true'
-        run: |
-          cd $OPENWRT_PATH
-          ./scripts/feeds update -a
-          ./scripts/feeds install -a
-
-      - name: 编译Tools
-        if: steps.hash.outputs.REBUILD_TOOLCHAIN == 'true'
-        run: |
-          cd $OPENWRT_PATH
-          make defconfig
-          echo -e "$(nproc) thread compile"
-          make tools/compile -j$(nproc) || make tools/compile -j1 V=s
-
-      - name: 编译Toolchain
-        if: steps.hash.outputs.REBUILD_TOOLCHAIN == 'true'
-        run: |
-          cd $OPENWRT_PATH
-          echo -e "$(nproc) thread compile"
-          make toolchain/compile -j$(nproc) || make toolchain/compile -j1 V=s
-          rm -rf .config* dl bin
-
-      - name: 生成Toolchain Image
-        if: steps.hash.outputs.REBUILD_TOOLCHAIN == 'true'
-        run: |
-
-          mksquashfs openwrt $TOOLCHAIN_IMAGE -force-gid 1001 -force-uid 1001 -comp zstd
-          mkdir -p $GITHUB_WORKSPACE/output
-          split -d -b 1900M $TOOLCHAIN_IMAGE $GITHUB_WORKSPACE/output/$TOOLCHAIN_IMAGE.img.
-          rm $TOOLCHAIN_IMAGE
-          echo $CURRENT_HASH > $GITHUB_WORKSPACE/output/$TOOLCHAIN_IMAGE.hash
-          ls -lh $GITHUB_WORKSPACE/output
-
-      - name: 上传Toolchain Image到Release
-        if: steps.hash.outputs.REBUILD_TOOLCHAIN == 'true'
-        uses: ncipollo/release-action@main
-        with:
-          name: Toolchain-Image
-          allowUpdates: true
-          replacesArtifacts: true
-          tag: ${{ env.TOOLCHAIN_TAG }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: output/*
-          body: OpenWrt 工具链镜像文件
-
   build:
-    needs: [generate-matrix, Toolchain]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     strategy:
       fail-fast: false
-      matrix: ${{fromJson(needs.generate-matrix.outputs.matrix)}}
-
     env:
-      OPENWRT_PATH: ${{ needs.Toolchain.outputs.OPENWRT_PATH }}
-      VERSION_INFO: ${{ needs.Toolchain.outputs.VERSION_INFO }}
-      CURRENT_BRANCH: ${{ needs.Toolchain.outputs.CURRENT_BRANCH }}
-      SOURCE_REPO: ${{ needs.Toolchain.outputs.SOURCE_REPO }}
+      OPENWRT_PATH: ${{  github.event.client_payload.variables.OPENWRT_PATH }}
+      CURRENT_BRANCH: ${{  github.event.client_payload.variables.CURRENT_BRANCH }}
+      SOURCE_REPO: ${{  github.event.client_payload.variables.SOURCE_REPO }}
+      DEVICE: ${{ github.event.client_payload.variables.DEVICE}}
+      SOURCE_BRANCH: ${{github.event.client_payload.variables.SOURCE_BRANCH}}
+      TOOLCHAIN_TAG: ${{github.event.client_payload.variables.TOOLCHAIN_TAG}}
+      APP_CONFIG: ${{github.event.client_payload.variables.APP_CONFIG}}
+      ssh: ${{github.event.client_payload.variables.ssh}}
+      ssh_quick: ${{github.event.client_payload.variables.ssh_quick}}
 
     steps:
+      - name: 生成变量
+        run: |
+          echo "WORKFLOW=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+
+      - name: 服务器配置
+        run: |
+          echo "--------------------------CPU信息--------------------------"
+          echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+          echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+          echo "--------------------------内存信息--------------------------"
+          echo "已安装内存详细信息："
+          echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+          echo "--------------------------硬盘信息--------------------------"
+          echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+          # 获取 CPU 信息
+          cpu_info=$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c)
+
+          # 配置不足的情况
+          if [[ $cpu_info == *"EPYC 7763"* ]]; then
+            echo "cpu_info contains EPYC 7763"
+            echo "RUNNER_PASS=true" >> $GITHUB_ENV
+          else
+            echo "cpu_info not contains EPYC 7763"
+            echo "RUNNER_PASS=false" >> $GITHUB_ENV
+          fi
+
+      # - name: Trigger Another Workflow
+      #   uses: peter-evans/repository-dispatch@v2
+      #   if: ${{ env.RUNNER_PASS == 'false' }}
+      #   with:
+      #     event-type: trigger-build-openwrt_build
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     client-payload: |-
+      #       {
+      #         "variables": {
+      #           "OPENWRT_PATH": "${{env.OPENWRT_PATH }}",
+      #           "CURRENT_BRANCH": "${{env.CURRENT_BRANCH }}",
+      #           "SOURCE_REPO": "${{env.SOURCE_REPO }}",
+      #           "DEVICE": "${{ env.DEVICE }}"
+      #         }
+      #       }
+
+      - name: TG Notification - 终止原因
+        if: ${{ env.RUNNER_PASS == 'false' }}
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            任务：${{ env.DEVICE }}     
+            服务器配置低，终止。
+
+      - name: 取消工作流
+        if: ${{ env.RUNNER_PASS == 'false' }}
+        run: |
+          curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{github.run_id}}/cancel
+
+      #- name: TG Notification - 配置
+      #  uses: appleboy/telegram-action@master
+      #  with:
+      #    to: ${{ secrets.TELEGRAM_CHAT_ID }}
+      #    token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      #    message: |
+      #      任务：${{ env.DEVICE }}
+      #
+      #      服务器配置：
+      #        ${{ env.CPU_INFO }}
+      #
+      #        ${{ env.MEMORY_INFO }}
+      #
+      #        ${{ env.DISK_INFO }}
+      #
+      #        ${{ env.DISK_USAGE }}
+      #
+      #      备注：已知CPU型号（降序）：AMD EPYC 7763，8370C，8272CL，8171M，E5-2673
+
+      - name: SSH 下取消多余工作流
+        if: ${{ (env.ssh == 'true' || env.ssh_quick == 'true')  && env.DEVICE != 'x86' }}
+        run: |
+          curl -L \
+          -X POST \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "X-GitHub-Api-Version: 2022-11-28" \
+          https://api.github.com/repos/${{ github.repository }}/actions/runs/${{github.run_id}}/cancel
+
       - name: 精简系统释放磁盘空间 (Ubuntu)
         uses: c3p7f2/free-disk-space@main
         with:
@@ -254,17 +151,20 @@ jobs:
 
           # 这里挂载会影响到$GITHUB_WORKSPACE，不要在后续步骤挂载，最好在编译步骤开启就跑
 
-      - name: SSH 下关闭其他工作流
-        if: ${{ github.event_name == 'workflow_dispatch' && (inputs.ssh || inputs.ssh_quick)  && matrix.Device != 'x86' }}
-        run: |
-          sudo halt
-
       - name: ssh to action
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh_quick  && contains(matrix.Device, 'x86')}}
+        if: ${{ env.ssh_quick == 'true'}}
         env:
           CLOUDFLARED_TOKEN: ${{ secrets.CLOUDFLARED_TOKEN }}
         run: |
           /bin/bash $GITHUB_WORKSPACE/scripts/ssh.sh
+
+      - name: Checkout
+        run: |
+          cd $GITHUB_WORKSPACE
+          git init
+          git remote add origin https://github.com/$GITHUB_REPOSITORY
+          git fetch
+          git checkout -t origin/$CURRENT_BRANCH
 
       - name: Initialization environment
         env:
@@ -290,24 +190,16 @@ jobs:
           sudo -E apt-get -qq autoremove --purge
           sudo -E apt-get -qq clean
 
-      - name: Checkout
-        run: |
-          cd $GITHUB_WORKSPACE
-          git init
-          git remote add origin https://github.com/$GITHUB_REPOSITORY
-          git fetch
-          git checkout -t origin/$CURRENT_BRANCH
-
       - name: 准备Toolchain Image
         run: |
 
           for i in {0..9}
           do
             echo downloading..
-            curl -fsL -k https://github.com/$GITHUB_REPOSITORY/releases/download/$TOOLCHAIN_TAG/toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ matrix.Device }}.img.0$i >> toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ matrix.Device }}.img || break
+            curl -fsL -k https://github.com/$GITHUB_REPOSITORY/releases/download/$TOOLCHAIN_TAG/toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ env.DEVICE }}.img.0$i >> toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ env.DEVICE }}.img || break
           done
           mkdir -p openwrt-ro openwrt workdir overlay
-          sudo mount -o loop toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ matrix.Device }}.img openwrt-ro
+          sudo mount -o loop toolchain-$SOURCE_REPO-$SOURCE_BRANCH-${{ env.DEVICE }}.img openwrt-ro
           sudo mount -t overlay overlay -o lowerdir=openwrt-ro,upperdir=overlay,workdir=workdir openwrt
           echo $GITHUB_WORKSPACE
           echo $OPENWRT_PATH
@@ -325,7 +217,7 @@ jobs:
 
       - name: Update configuration
         run: |
-          cp $GITHUB_WORKSPACE/configs/${{ matrix.Device }}/.config $OPENWRT_PATH/.config
+          cp $GITHUB_WORKSPACE/configs/${{ env.DEVICE }}/.config $OPENWRT_PATH/.config
           cat $GITHUB_WORKSPACE/$APP_CONFIG >> $OPENWRT_PATH/.config
           cd $OPENWRT_PATH && make defconfig
           sed -i '/CONFIG_DEFAULT_luci/'d .config
@@ -365,7 +257,7 @@ jobs:
         run: |
           cd $OPENWRT_PATH
 
-          if [[ ${{ matrix.Device }} == *"x86"* ]]; then
+          if [[ ${{ env.DEVICE }} == *"x86"* ]]; then
             arch="amd64"
           else
             arch="arm64"
@@ -378,11 +270,22 @@ jobs:
           fi
 
       - name: ssh to action
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.ssh  && contains(matrix.Device, 'x86')}}
+        if: ${{ env.ssh == 'true'}}
         env:
           CLOUDFLARED_TOKEN: ${{ secrets.CLOUDFLARED_TOKEN }}
         run: |
           /bin/bash $GITHUB_WORKSPACE/scripts/ssh.sh
+
+      - name: 生成defconfig
+        run: |
+          cd $OPENWRT_PATH
+          ./scripts/diffconfig.sh > defconfig
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: config-${{ env.DEVICE }}
+          path: ${{ env.OPENWRT_PATH }}/defconfig
 
       - name: 编译Packages
         id: compile
@@ -425,7 +328,7 @@ jobs:
           echo "PACKAGED_OUTPUTPATH=$PWD" >> $GITHUB_ENV
 
       - name: Package Armvirt as OpenWrt
-        if: contains(matrix.Device, 'n1')
+        if: ${{env.DEVICE=='n1'}}
         uses: ophub/flippy-openwrt-actions@main
         env:
           OPENWRT_ARMVIRT: openwrt/bin/targets/*/*/*rootfs.tar.gz
@@ -441,10 +344,10 @@ jobs:
 
           echo "DATE=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
           echo "release_tag=${{ env.CURRENT_BRANCH }}-$(date +'%Y.%m.%d')-download" >> $GITHUB_ENV
-          echo "DEVICES=$(echo '${{ needs.generate-matrix.outputs.matrix }}' | jq -r '.include[].device' | tr '\n' ' ')" >> $GITHUB_ENV
-          echo "WORKFLOW=${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_ENV
+          # echo "DEVICES=$(echo '${{ needs.generate-matrix.outputs.matrix }}' | jq -r '.include[].device' | tr '\n' ' ')" >> $GITHUB_ENV
 
-          echo "BIN_PATH=openwrt/${{ matrix.Device }}/${{ env.CURRENT_BRANCH }}" >> $GITHUB_ENV
+
+          echo "BIN_PATH=openwrt/${{ env.DEVICE }}/${{ env.CURRENT_BRANCH }}" >> $GITHUB_ENV
 
       - name: Upload firmware to release
         uses: softprops/action-gh-release@v1
@@ -458,7 +361,6 @@ jobs:
             - 分支：${{ env.CURRENT_BRANCH }}
             - 编译日期：${{ env.DATE }}
             - 编译日志： ${{ env.WORKFLOW}}
-            - 支持设备/平台：${{ env.DEVICES }}
 
             国内加速下载：https://js.7fan.fun/ https://ghproxy.com/ https://ghps.cc/
 
@@ -471,14 +373,14 @@ jobs:
       #    ref: ${{ env.WEB_BRANCH }}
       #    path: ${{ env.WEB_PATH }}
       #    lfs: true
-#
+      #
       #- name: Commit and push if changed
       #  run: |
       #    cd ${{ env.WEB_PATH }}
-#
+      #
       #    mkdir -p ${{env.BIN_PATH}}
       #    mv ${{ env.PACKAGED_OUTPUTPATH }}/* ${{env.BIN_PATH}}/
-#
+      #
       #    git config --global user.email "actions@github.com"
       #    git config --global user.name "GitHub Actions"
       #    git lfs track "${{env.BIN_PATH}}/*.gz"
@@ -486,7 +388,7 @@ jobs:
       #    git diff --quiet && git diff --staged --quiet || (git commit -m "Add changes" ; git push)
 
       - name: TG Notification - ❌
-        if: ${{ !success() }}
+        if: ${{ !success() && env.RUNNER_PASS == 'true' }}
         continue-on-error: true
         uses: appleboy/telegram-action@master
         with:
@@ -495,10 +397,10 @@ jobs:
           message: |
             ERR!!
               正在运行工作流但是遇到了错误
-              请查看具体日志(${{ env.WORKFLOW }})以探明发生错误的位置及原因
+              具体日志：${{ env.WORKFLOW }}
 
             INFO
-              设备/平台：${{ matrix.Device }}
+              设备/平台：${{ env.DEVICE }}
               分支：${{ env.CURRENT_BRANCH }}
               
             What can I do
@@ -520,8 +422,8 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message: |
-            Succeed
-              ${{ matrix.Device }} 固件已制作完毕
+            Success
+              ${{ env.DEVICE }} 固件已制作完毕
               下载地址：https://github.com/${{ github.repository }}/releases/tag/${{ env.release_tag }}
 
             ---END---

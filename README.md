@@ -12,7 +12,6 @@
 - luci-app-ddns
 - luci-app-design-config
 - luci-app-diskman
-- luci-app-filebrowser
 - luci-app-filetransfer
 - luci-app-firewall
 - luci-app-frpc
@@ -25,8 +24,13 @@
 - luci-app-nps
 - luci-app-openclash
 - luci-app-openvpn
+- luci-app-passwall
+- luci-app-passwall_Iptables_Transparent_Proxy
+- luci-app-passwall2
+- luci-app-passwall2_Iptables_Transparent_Proxy
 - luci-app-pushbot
 - luci-app-qbittorrent
+- luci-app-qbittorrent-simple_dynamic
 - luci-app-qos
 - luci-app-samba4
 - luci-app-serverchan
@@ -36,11 +40,12 @@
 - luci-app-syncdial
 - luci-app-ttyd
 - luci-app-turboacc
-- luci-app-unblockmusic
 - luci-app-upnp
 - luci-app-usb-printer
+- luci-app-uugamebooster
 - luci-app-vlmcsd
 - luci-app-vsftpd
+- luci-app-webadmin
 - luci-app-wireguard
 - luci-app-wol
 - luci-app-xlnetacc
